@@ -1,5 +1,10 @@
 from argparse import ArgumentParser
 import pandas as pd
+import logging
+import math
+
+logging.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s',
+                    datefmt='%d-%b-%y %H:%M:%S', level=logging.DEBUG)
 
 def shrink_encoding(encoding):
     ncols = len(next(iter(encoding)))
@@ -43,34 +48,26 @@ if __name__ == "__main__":
     data = pd.read_csv(args.markerfile)
     with open(args.markerfile) as in_handle:
         genes = in_handle.readline().strip().split(",")[1:]
-        print(genes)
         for line in in_handle:
             tokens = line.strip().split(",")
             encodings[tokens[0]] = "".join(tokens[1:])
 
-    minbits = 4
+    logging.info(f"Reducing list of markers down from {genes}.")
+    minbits = math.ceil(math.log2(len(data)))
+    logging.info(f"Minimum bits to encode all celltypes is {minbits}.")
     bitlen = len(genes)
     startcodes = {y for x, y in encodings.items()}
     shrunk = [startcodes]
     newgenes = [genes]
     optimized = newgenes
-    optimizedshrunk = shrunk
     while True:
         if len(newgenes) > 0 and len(newgenes[0]) == minbits:
             optimized = newgenes
-            optimizedshrunk = shrunk
             break
         elif len(newgenes) == 0:
             break
         optimized = newgenes
-        optimizedshrunk = shrunk
         newgenes, shrunk = shrink_encodings(shrunk, newgenes)
-    # newgenes, shrunk = shrink_encodings([startcodes], [genes])
-    # newgenes, shrunk = shrink_encodings(shrunk, newgenes)
-    # newgenes, shrunk = shrink_encodings(shrunk, newgenes)
-    # newgenes, shrunk = shrink_encodings(shrunk, newgenes)
-    # newgenes, shrunk = shrink_encodings(shrunk, newgenes)
-    print(len(optimized))
     for index, y in enumerate(set([tuple(x) for x in optimized])):
         cols = ["type"] + list(y)
-        data[cols].to_csv(f"optimizedshrunk{index}.csv", index=False)
+        data[cols].to_csv(f"shrunk{index}.csv", index=False)
